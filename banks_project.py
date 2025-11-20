@@ -39,14 +39,13 @@ def transform(df, csv_path):
     exchange_rate_file = pd.read_csv(csv_path)
     rates_dict = exchange_rate_file.set_index('Currency').to_dict()['Rate']
     
-    df["MC_GBP_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict.GBP),2)
-    df["MC_EUR_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict.EUR),2)
-    df["MC_INR_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict.INR),2)
+    df["MC_GBP_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict["GBP"]),2)
+    df["MC_EUR_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict["EUR"]),2)
+    df["MC_INR_Billion"] = round(df["MC_USD_Billion"] * float(rates_dict["INR"]),2)
     return df
 
 def load_to_csv(df, output_path):
-    ''' This function saves the final data frame as a CSV file in
-    the provided path. Function returns nothing.'''
+    df.to_csv(output_path)
 
 def load_to_db(df, sql_connection, table_name):
     ''' This function saves the final data frame to a database
@@ -58,9 +57,11 @@ def run_query(query_statement, sql_connection):
 
 bank_info_src_website = 'https://en.wikipedia.org/wiki/List_of_largest_banks'
 output_file_fields = ["Name", "MC_USD_Billion", "MC_GBP_Billion", "MC_EUR_Billion", "MC_INR_Billion"]
+output_csv = 'Largest_banks_data.csv'
 log_file = 'code_log.txt'
 exchange_rate_file = 'exchange_rate.csv'
 
 
 df = extract(bank_info_src_website, output_file_fields)
-print(transform(df, exchange_rate_file))
+df = transform(df, exchange_rate_file)
+load_to_csv(df, output_csv)
