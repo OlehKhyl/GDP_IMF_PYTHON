@@ -5,11 +5,12 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import pandas as pd
 import requests
+import sqlite3
 
 def log_progress(message):
     dt = datetime.now().strftime("%d-%m-%y %H:%M:%S")
     with open(log_file,'a') as log:
-        log.write(dt + ": " + message)
+        log.write(dt + ": " + message + "\n")
 
 
 def extract(url, table_attribs):
@@ -48,20 +49,40 @@ def load_to_csv(df, output_path):
     df.to_csv(output_path)
 
 def load_to_db(df, sql_connection, table_name):
-    ''' This function saves the final data frame to a database
-    table with the provided name. Function returns nothing.'''
+    df.to_sql(table_name, sql_connection, if_exists='replace', index=False)
 
 def run_query(query_statement, sql_connection):
-    ''' This function runs the query on the database table and
-    prints the output on the terminal. Function returns nothing. '''
+    print(query_statement)
+    print(pd.read_sql(query_statement, sql_connection))
+    print('\n')
 
-bank_info_src_website = 'https://en.wikipedia.org/wiki/List_of_largest_banks'
+bank_info_src_website = 'https://web.archive.org/web/20230908091635 /https://en.wikipedia.org/wiki/List_of_largest_banks'
 output_file_fields = ["Name", "MC_USD_Billion", "MC_GBP_Billion", "MC_EUR_Billion", "MC_INR_Billion"]
 output_csv = 'Largest_banks_data.csv'
 log_file = 'code_log.txt'
 exchange_rate_file = 'exchange_rate.csv'
+db_name = 'Banks.db'
+table_name = 'Largest_banks'
 
-
+log_progress('Preliminaries complete. Initiating ETL process')
 df = extract(bank_info_src_website, output_file_fields)
+
+log_progress('Data extraction complete. Initiating Transformation process')
 df = transform(df, exchange_rate_file)
+
+log_progress('Data transformation complete. Initiating Loading process')
 load_to_csv(df, output_csv)
+log_progress('Data saved to CSV file')
+
+sql_conn = sqlite3.connect(db_name)
+log_progress('SQL Connection initiated')
+
+load_to_db(df, sql_conn, table_name)
+log_progress('Data loaded to Database as a table, Executing queries')
+run_query('SELECT * FROM Largest_banks',sql_conn)
+run_query('SELECT AVG(MC_GBP_Billion) FROM Largest_banks',sql_conn)
+run_query('SELECT Name from Largest_banks LIMIT 5',sql_conn)
+log_progress('Process Complete')
+
+sql_conn.close()
+log_progress('Server Connection closed')
